@@ -1,0 +1,19 @@
+Bank statements and transfers in a configuration file (Learn JSON files).
+- read configuration file, dump contents
+- read bank statement and dump contents
+- prove that i parsed and didnt read it in (print it out in a fancy way. column names, etc.)
+
+rules for minimum money transfering into a savings account (JSON).
+
+report at the end of each month how money was spent. names can be broad, seperate rules 
+for each merchants name.  
+
+Categorized merchants, anything that cant be categorizedis shown as a prompt. User 
+chooses to categorize permanently or not to. If user chooses not to, ask again next time.
+
+Setup github account with a cool name.
+
+First Task (unpayed):
+- learn to use argument parser.
+- learn json library
+- learn csv (comma seperated value) library

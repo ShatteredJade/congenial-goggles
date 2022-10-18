@@ -1,0 +1,9 @@
+{
+  "test": [
+    {
+      "test_boolean": true,
+      "test_int": 84,
+      "test_string": "jetstream sam"
+    }
+  ]
+}
