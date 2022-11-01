@@ -31,7 +31,7 @@ class UserInterface:
             request = self.settings_prompt()
             key, line = self.settings_manager.settings_select(counter, settings, request)
             request = self.settings_prompt()
-            self.settings_manager.settings_edit(key, line, request, settings)
+            self.settings_manager.data_dump(key, line, request, settings)
 
     def settings_prompt(self):
         request = self.user_input()
