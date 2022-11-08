@@ -1,12 +1,30 @@
-import csv, json, keyboard
+import csv, json
 from pathlib import Path
 from PyInquirer import prompt
 from uuid import uuid1
 from datetime import datetime
 
-# Will optimize fetching, editing, and creating data in settings later.
-# Functions to appraise: bucket_interface_create, bucket_interface_edit, edit_select, residence_create, bucket_create,
-#                        settings_fetch, settings_fetch_check
+# menu constants
+status_menu = 'Status Menu'
+bucket_menu = 'Bucket Menu'
+residence_menu = 'Residence Menu'
+tutorial = 'Tutorial'
+exit_program = 'Exit'
+return_to_menu = 'Return to Main Menu'
+
+create_bucket = 'Create Bucket'
+edit_bucket = 'Edit Buckets'
+remove_bucket = 'Remove a Bucket'
+
+create_residence = 'Create Residence'
+edit_residence = 'Edit Residences'
+remove_residence = 'Remove a Residence'
+
+yes = 'Yes'
+no = 'No'
+
+# sys msg constants
+invalid_input = "\nPlease enter a valid input.\n"
 
 
 class UserInterface:
@@ -18,24 +36,24 @@ class UserInterface:
                 self.tutorial_interface()
 
     def menu(self):
-        answer = self.menu_prompt('list', 'Main Menu',
-                                  ['Status', 'Edit Buckets', 'Edit Residences', 'Exit', 'Tutorial'])
-
-        if answer == 'Status':
-            self.status_interface()
-        elif answer == 'Edit Buckets':
-            self.bucket_interface()
-        elif answer == 'Edit Residences':
-            self.residence_interface()
-        elif answer == 'Tutorial':
-            self.tutorial_interface()
+        while True:
+            answer = self.menu_prompt('list', 'Main Menu',
+                                      [status_menu, bucket_menu, residence_menu, exit_program, tutorial])
+            if answer == status_menu:
+                self.status_interface()
+            elif answer == bucket_menu:
+                self.bucket_interface()
+            elif answer == residence_menu:
+                self.residence_interface()
+            elif answer == tutorial:
+                self.tutorial_interface()
 
     def bucket_interface(self):
-        answer = self.menu_prompt('list', 'Bucket Menu', ['Create New Bucket', 'Edit Existing Buckets',
-                                                          'Remove a Bucket', 'Return to Main Menu'])
+        bucket_id = self.menu_prompt('list', 'Bucket Menu', [create_bucket, edit_bucket, remove_bucket, return_to_menu])
 
-        if answer == 'Create New Bucket':
-            if self.settings_manager.residence_check():  # checking for at least one residence for the new bucket
+        if bucket_id == create_bucket:
+            # check for residences
+            if self.settings_manager.residence_check():
                 self.data_gather('buckets', ['name', 'type', 'residence_id'])
             else:
                 if self.prompt_confirm('You have not created any residences yet. Would you like to:'):
@@ -44,22 +62,18 @@ class UserInterface:
                 else:
                     print("\nCannot create a bucket while no residences exist. Returning to Main Menu.\n")
 
-            self.menu()
-
-        elif answer == 'Edit Existing Buckets':
+        elif bucket_id == edit_bucket:
             bucket_id = self.menu_prompt('list', 'Choose a Bucket to Edit',
-                                         self.settings_manager.fetch('buckets', 'name', main_menu=True))
+                                         self.settings_manager.fetch('buckets', 'name', add_return=True))
+            if self.return_check(bucket_id):
+                self.edit_interface('buckets', bucket_id)
 
-            self.edit_interface('buckets', bucket_id)
-            self.menu()
-
-        elif answer == 'Remove a Bucket':
+        elif bucket_id == remove_bucket:
             bucket_id = self.menu_prompt('list', 'Choose a Bucket to Remove',
-                                         self.settings_manager.fetch('buckets', 'name', main_menu=True))
-
-            if self.prompt_confirm(f"Are you sure you wish to remove this bucket?"):
-                self.settings_manager.remove('buckets', bucket_id)
-            self.menu()
+                                         self.settings_manager.fetch('buckets', 'name', add_return=True))
+            if self.return_check(bucket_id):
+                if self.prompt_confirm('Are you sure you wish to remove this bucket?'):
+                    self.settings_manager.remove('buckets', bucket_id)
 
     def edit_interface(self, category, data_id):
         data_list = self.settings_manager.grab(category, data_id)
@@ -67,6 +81,7 @@ class UserInterface:
         tags = self.settings_manager.tags(titles=True)
         choices = []
 
+        # get edit options
         for data in data_list:
             if data == 'config':
                 choices = self.config_choices(data, data_list, choices)
@@ -76,121 +91,50 @@ class UserInterface:
             else:
                 choices.append({'name': f'{tags.get(data)}: {self.label_currency(data_list.get(data))}', 'value': data})
 
-        choices.append('Return to Main Menu')
+        choices.append(return_to_menu)
 
-        answer = self.menu_prompt('list', 'Select a Setting to Edit', choices)
+        answer = self.menu_prompt('list', 'Choose a Setting to Edit', choices)
 
-        self.data_gather(category, [answer], data_id)
-
-        # data_list = self.settings_manager.grab('buckets', bucket_id)
-        # del data_list['id']
-        # titles = []
-        #
-        # for data in data_list:  # creates titles for edit menu
-        #     if data == 'config':
-        #         for config in data_list.get(data):
-        #             titles.append(f"{config.replace('_', ' ').title()}: "
-        #                           f"{self.label_currency(data_list.get(data).get(config))}")
-        #     elif data == 'residence_id':
-        #         res = self.settings_manager.fetch('residences', 'name', data_id=data_list.get(data))
-        #         titles.append(f"Residence - {res[0].get('name')}")
-        #         continue
-        #     else:
-        #         titles.append(f"{data.replace('_', ' ').title()}: {self.label_currency(data_list.get(data))}")
-        #
-        # titles.append('Return to Main Menu')
-        #
-        # menu_options = self.menu_maker('list', 'options', f"Edit Bucket {data_list.get('name')}", titles)
-        # select = prompt(menu_options).get('options')
-        # self.prompt_check(select)
-        #
-        # self.edit_select(select, bucket_id, data_list)
-
-        # --------------------------------------------------------------------------------------------------------------
-
-        # data_list = self.settings_manager.settings_fetch('buckets', 'name', 'type', 'residence_id', 'balance',
-        #                                                  'config', data_id=bucket_id)
-        # residence = self.settings_manager.settings_fetch('residences', 'name', data_id=data_list[2])[0]
-        #
-        # title_list = [
-        #     f"Name: {data_list[0].get('name')}",
-        #     f"Type: {data_list[1]}",
-        #     f"Residence: {residence.get('name')}",
-        #     f"Balance: ${data_list[3]}"
-        # ]
-        #
-        # if data_list[1] == 'Static':
-        #     title_list.insert(2, 'Target Goal: $' + data_list[4].get('target'))
-        # else:
-        #     title_list.insert(2, 'Monthly Target Goal: $' + data_list[4].get('monthly_target'))
-        #     title_list.insert(3, 'Last Contribution: ' + data_list[4].get('last_contribution'))
-        #
-        # title_list.append(data_list[-1])  # adding return to main menu
-        #
-        # menu_options2 = self.menu_maker('list', 'options', f'Edit Bucket {data_list[0]}', title_list)
-        # select = prompt(menu_options2).get('options')
-        # self.prompt_check(select)
-        #
-        # self.edit_select(select, bucket_id)
+        if self.return_check(answer):
+            self.data_gather(category, [answer], data_id)
 
     def residence_interface(self):
-        answer = self.menu_prompt('list', 'Residence Menu', ['Create Residence', 'Edit Existing Residences',
-                                                             'Remove a Residence', 'Return to Main Menu'])
+        answer = self.menu_prompt('list', 'Residence Menu', [create_residence, edit_residence, remove_residence,
+                                                             return_to_menu])
 
-        if answer == 'Create Residence':
+        if answer == create_residence:
             self.data_gather('residences', ['name'])
-            self.menu()
-        elif answer == 'Edit Existing Residences':
+
+        elif answer == edit_residence:
             res_id = self.menu_prompt('list', 'Choose a Residence to Edit',
-                                      self.settings_manager.fetch('residences', 'name', main_menu=True))
+                                      self.settings_manager.fetch('residences', 'name', add_return=True))
+            if self.return_check(res_id):
+                self.edit_interface('residences', res_id)
 
-            self.edit_interface('residences', res_id)
-            self.menu()
-
-        elif answer == 'Remove a Residence':
+        elif answer == remove_residence:
             res_id = self.menu_prompt('list', 'Choose a Residence to Remove',
-                                      self.settings_manager.fetch('residences', 'name', main_menu=True))
+                                      self.settings_manager.fetch('residences', 'name', add_return=True))
 
-            if self.settings_manager.res_dependents(res_id) is False:
-                if self.prompt_confirm(f"Are you sure you wish to remove this residence?"):
-                    self.settings_manager.remove('residences', res_id)
-            else:
-                print('\nDetected buckets that rely upon this residence, please remove all dependent buckets first.\n')
-
-            self.menu()
-
-    # gathers input data according to data_list, sends it all off to data_dump
-    def data_gather(self, category, data_list, data_id=None):
-        data_dict = {}
-
-        for data in data_list:
-            while True:
-                answer = self.ask_input(category, data)
-
-                if self.input_check(data, answer):
-                    data_dict[data] = answer
-                    if data == 'type':
-                        data_dict['config'] = self.config_type(answer)
-                    break
+            if self.return_check(res_id):
+                # check for dependents
+                if self.settings_manager.res_dependents(res_id) is False:
+                    if self.prompt_confirm('Are you sure you wish to remove this residence?'):
+                        self.settings_manager.remove('residences', res_id)
                 else:
-                    print("\nPlease enter a valid input.\n")
+                    print('\nDetected buckets that rely on this residence, please remove dependent buckets first.\n')
 
-        self.settings_manager.data_dump(category, data_dict, data_id)
-
-    # Considering directly displaying missing or unallocated money from menu
     def status_interface(self):
         bucket_id = self.menu_prompt('list', 'Status Menu', self.settings_manager.status_display())
+
+        if self.return_check(bucket_id) is False:
+            return
+
         data_list = self.settings_manager.fetch('buckets', 'name', 'type', 'config', 'balance', data_id=bucket_id)
-        message = f"\nBucket {data_list[0].get('name')} has a balance of ${data_list[3]} "
         data_dict = {}
 
-        if data_list[1] == 'Static':
-            message = message+f"and a target balance of ${data_list[2].get('target')}.\n"
-        else:
-            message = message+f"and a monthly goal of ${data_list[2].get('monthly_target')}." \
-                              f" The last time you contributed was {data_list[2].get('last_contribution')}.\n"
-        print(message)
+        print(self.status_sys_msg(data_list))
 
+        # prompt user to contribute to bucket balance
         if self.prompt_confirm(f"Would you like to add to {data_list[0].get('name')}'s balance?"):
             if data_list[1] == 'Static':
                 while True:
@@ -201,8 +145,9 @@ class UserInterface:
                         data_dict = {'balance': data_list[3]}
                         break
                     else:
-                        print('\nPlease enter a valid input.\n')
+                        print(invalid_input)
             else:
+                # contributes entire monthly goal
                 if self.prompt_confirm(f"Contribute {data_list[2].get('monthly_target')}?"):
                     data_list[3] = float(data_list[3])+float(data_list[2].get('monthly_target'))
                     data_list[2]['last_contribution'] = str(datetime.now().strftime('%Y-%m-%d'))
@@ -210,24 +155,58 @@ class UserInterface:
 
             self.settings_manager.data_dump('buckets', data_dict, data_id=bucket_id)
             print(f"\nSuccessfully Added to {data_list[0].get('name')}'s Balance.\n")
-        self.menu()
 
-    def prompt_check(self, select):
-        if select.lower()[:6] == 'return':
-            self.menu()
-        elif select.lower() == 'exit':
-            quit()
+    # assembles sys msg for a bucket's status, returns it
+    def status_sys_msg(self, data_list):
+        msg = f"\nBucket {data_list[0].get('name')} has a balance of ${data_list[3]} "
+
+        if data_list[1] == 'Static':
+            msg = msg+f"and a target balance of ${data_list[2].get('target')}.\n"
+        else:
+            msg = msg+f"and a monthly goal of ${data_list[2].get('monthly_target')}." \
+                              f" The last time you contributed was {data_list[2].get('last_contribution')}.\n"
+
+        return msg
+
+    # gathers input data according to data_list, sends it all off to data_dump
+    def data_gather(self, category, data_list, data_id=None):
+        data_dict = {}
+
+        for data in data_list:
+            while True:
+                answer = self.ask_input(category, data)
+
+                if self.return_check(answer) is False:
+                    return
+
+                # check input matches necessary value type
+                if self.input_check(data, answer):
+                    data_dict[data] = answer
+                    if data == 'type':
+                        data_dict['config'] = self.config_type(answer)
+                    break
+                else:
+                    print(invalid_input)
+
+        self.settings_manager.data_dump(category, data_dict, data_id)
 
     def prompt_confirm(self, question):
-        answer = self.menu_prompt('list', question, ['Yes', 'No', 'Return to Main Menu'])
+        answer = self.menu_prompt('list', question, [yes, no, return_to_menu])
 
-        if answer == 'Yes':
+        if answer == yes:
             return True
         else:
             return False
 
-    # Wrapper to reduce bloat from the creation of menus. Prompts user and returns answer
+    def return_check(self, answer):
+        if answer == return_to_menu:
+            return False
+        else:
+            return True
+
+    # Wrapper to reduce bloat from the creation of menus. Prompts user, checks prompt, and returns answer
     def menu_prompt(self, menu_type, message, choices=None):
+        # PyInquirer format
         menu_options = [
             {
                 'type': menu_type,
@@ -240,7 +219,10 @@ class UserInterface:
             menu_options[0]['choices'] = choices
 
         answer = prompt(menu_options).get('answer')
-        self.prompt_check(answer)
+
+        if answer == exit_program:
+            quit()
+
         return answer
 
     # Asks user for data input, returns answer
@@ -249,6 +231,7 @@ class UserInterface:
         message_end = ':'
         choices = None
 
+        # assign PyInquirer menu data
         if data in tags['input']:
             menu_type = 'input'
             if data == 'last_contribution':
@@ -261,7 +244,7 @@ class UserInterface:
                 choices = ['Static', 'Growing']
 
         if choices is not None:
-            choices.append('Return to Main Menu')
+            choices.append(return_to_menu)
 
         message = f"New {category[:-1].title()} {tags[menu_type].get(data)}" + message_end
 
@@ -269,7 +252,7 @@ class UserInterface:
 
     def float_check(self, data):
         try:
-            f"{float(data):.2f}"
+            float(data)
             return True
         except ValueError:
             return False
@@ -301,6 +284,7 @@ class UserInterface:
     # asks for input and returns config dict
     def config_type(self, bucket_type):
         while True:
+            # format according to bucket type
             if bucket_type == 'Static':
                 target = 'target'
                 config = {'target': self.ask_input('buckets', 'target')}
@@ -313,11 +297,13 @@ class UserInterface:
                 config[target] = f'{float(config.get(target)):.2f}'
                 break
             except ValueError:
-                print('\nPlease input a correct value\n')
+                print(invalid_input)
 
         return config
 
+    # returns PyInquirer compatible choices for bucket config
     def config_choices(self, data, data_list, choices):
+        # format according to bucket type
         if data_list.get('type') == 'Static':
             value = data_list.get(data).get('target')
             choices.append({'name': f"Target Goal: ${value}", 'value': 'target'})
@@ -330,8 +316,9 @@ class UserInterface:
                             'value': 'last_contribution'})
         return choices
 
+    # uses keyboard module, replace later
     def tutorial_interface(self):
-        request = "\n\nPress Space to Continue\n"
+        request = "\n\nPress Enter to Continue"
         tutorial_text = ['''
 \nCongenial Goggles consists of buckets and residences.''',
                          '''
@@ -350,15 +337,14 @@ or just a category (I.E. Children's College Fund)''']
 
         for text in tutorial_text:
             print(text, request)
-            keyboard.wait('space')
-
-        self.menu()
+            input()
 
 
 class SettingsManager:
     def __init__(self):
         pass
 
+    # boolean return is for newcomer tutorial
     def check(self):
         if not Path('settings.json').is_file():
             self.dump({'buckets': [], 'residences': []})
@@ -376,13 +362,14 @@ class SettingsManager:
             except KeyError:
                 return False
 
-    # Formats settings file based on bucket type
+    # creates config, formatted for bucket type
     def config_create(self, bucket_type, bucket_goal):
         if bucket_type == 'Static':
             return {'target': bucket_goal}
         else:
             return {'monthly_target': bucket_goal, 'last_contribution': str(datetime.now().strftime('%Y-%m-%d'))}
 
+    # creates and returns a list of all buckets, tagging them if unallocated/missing funds detected
     def status_display(self):
         bucket_list = []
 
@@ -391,42 +378,43 @@ class SettingsManager:
         for bucket in settings['buckets']:
             bucket_dict = {'name': bucket.get('name'), 'value': bucket.get('id')}
 
+            # format according to bucket type
             if bucket.get('type') == 'Static':
                 # if bucket hasn't reached goal
                 if float(bucket.get('config').get('target')) > float(bucket.get('balance')):
-                    bucket_dict['name'] = f"{bucket.get('name')} (Missing Funds)"
-
-            else:  # if type is growing
+                    bucket_dict['name'] = f"{bucket.get('name')} (Missing Funds)"  # tag
+            else:
+                # split recorded and current date into year, month, day
                 last_contribution = bucket.get('config').get('last_contribution').split('-')
                 current_date = str(datetime.now().strftime('%Y-%m-%d')).split('-')
                 # if at least a month has elapsed
                 if self.month_check(last_contribution, current_date):
-                    bucket_dict['name'] = f"{bucket.get('name')} (Missing Funds)"
+                    bucket_dict['name'] = f"{bucket.get('name')} (Missing Funds)"  # tag
 
             bucket_list.append(bucket_dict)
-        bucket_list.append('Return to Main Menu')
+        bucket_list.append(return_to_menu)
 
         return bucket_list
 
     # finds specified data, returns as a list
-    def fetch(self, category, *args, data_id=None, main_menu=False):
+    def fetch(self, category, *args, data_id=None, add_return=False):
         data_list = []
         settings = self.load()
 
         for data in settings[category]:
             if data_id is not None:  # Only ID's data
                 if data.get('id') == data_id:
-                    data_list = self.fetch_check(data, data_list, args)
+                    data_list = self.fetch_append(data, data_list, args)
             else:  # All data regardless of ID
-                data_list = self.fetch_check(data, data_list, args)
+                data_list = self.fetch_append(data, data_list, args)
 
-        if main_menu:
-            data_list.append('Return to Main Menu')
+        if add_return:
+            data_list.append(return_to_menu)
 
         return data_list
 
     # iterates through *args, fetching data
-    def fetch_check(self, data, data_list, args):
+    def fetch_append(self, data, data_list, args):
         for arg in args:
             if arg == 'name':  # pair name with an ID value
                 data_list.append({'name': data.get('name'), 'value': data.get('id')})
@@ -451,11 +439,11 @@ class SettingsManager:
         with open('settings.json', 'w') as f:
             json.dump(settings, f, indent=2)
 
-    # if no id, dump new bucket/residence
-    def data_dump(self, category, data_dict, data_id=None):  # kwarg = setting: data
+    def data_dump(self, category, data_dict, data_id=None):  # category = bucket/residence
         settings = self.load()
 
-        if data_id is None:  # if no id then new bucket/residence
+        # default new data format
+        if data_id is None:  # if no id then it's a new bucket/residence
             settings[category].append({'id': str(uuid1()), 'name': data_dict.get('name')})
             if category == 'buckets':
                 settings[category][-1]['type'] = data_dict.get('type')
@@ -464,18 +452,21 @@ class SettingsManager:
                 settings[category][-1]['balance'] = '0.00'
             print(f"\nNew {category.title()[:-1]} {data_dict.get('name')} has been created.\n")
 
-        for setting in settings[category]:
-            if setting['id'] == data_id:
-                for data in data_dict:
-                    if data == 'balance':
-                        setting[data] = f"{float(data_dict.get(data)):.2f}"
-                    elif data == 'target' or data == 'monthly_target':
-                        setting.get('config')[data] = f"{float(data_dict.get(data)):.2f}"
-                    elif data == 'last_contribution':
-                        setting.get('config')[data] = data_dict.get(data)
-                    else:
-                        setting[data] = data_dict.get(data)
-                print(f"\n{category[:-1].title()} {setting.get('name')} has been edited.\n")
+        else:
+            for setting in settings[category]:
+                if setting['id'] == data_id:
+                    # overwrites data according to data_dict
+                    for data in data_dict:
+                        if data == 'balance':
+                            setting[data] = f"{float(data_dict.get(data)):.2f}"
+                        elif data == 'target' or data == 'monthly_target':
+                            setting.get('config')[data] = f"{float(data_dict.get(data)):.2f}"
+                        elif data == 'last_contribution':
+                            setting.get('config')[data] = data_dict.get(data)
+                        else:
+                            setting[data] = data_dict.get(data)
+
+                    print(f"\n{category[:-1].title()} {setting.get('name')} has been edited.\n")
 
         self.dump(settings)
 
@@ -488,6 +479,7 @@ class SettingsManager:
 
         self.dump(settings)
 
+    # possible cringe alert
     def tags(self, titles=False):
         if titles:
             return {
@@ -514,6 +506,7 @@ class SettingsManager:
                 }
             }
 
+    # checks if a month has elapsed, returns corresponding boolean
     def month_check(self, last_contribution, current_date):
         if current_date[1] > last_contribution[1] and current_date[2] >= last_contribution[2]:
             return True
@@ -524,6 +517,7 @@ class SettingsManager:
         else:
             return False
 
+    # checks if a residence has dependent buckets, returns corresponding boolean
     def res_dependents(self, data_id):
         settings = self.load()
 
