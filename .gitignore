@@ -1,2 +1,5 @@
 venv
 .idea
+test.py
+settings.json
+__pycache__
