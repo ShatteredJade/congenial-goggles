@@ -2,8 +2,6 @@
 
 A banking app that allows users to freely divide their financial goals into buckets and residences. 
 
-## Documentation
-
 ## Buckets
 
 Buckets are specific a measure of how much one wants to save towards a specific financial goal (i.e. Ryan's College Fund)
