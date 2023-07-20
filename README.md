@@ -22,8 +22,8 @@ PyInquirer is depended upon to help handle user input and menu navigation, and r
 
 You can either install PyInquirer with
 
-  pip install pyinquirer
+    pip install pyinquirer
 
 or install using requirements.txt
 
-  pip install -r requirements.txt
+    pip install -r requirements.txt
