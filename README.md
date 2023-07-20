@@ -15,3 +15,15 @@ Growing is a dynamic amount in which a user must contribute monthly towards thei
 ## Residences
 
 Residences are a large group in which buckets reside. For example; 'Ryan's College Fund' may reside within a larger residence called 'Children's College Funds', where you may have multiple funds for multiple children
+
+## Instructions
+
+PyInquirer is depended upon to help handle user input and menu navigation, and runs on Python version 3.9
+
+You can either install PyInquirer with
+
+  pip install pyinquirer
+
+or install using requirements.txt
+
+  pip install -r requirements.txt
