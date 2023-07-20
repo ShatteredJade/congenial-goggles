@@ -22,7 +22,7 @@ PyInquirer is depended upon to help handle user input and menu navigation, and r
 
 You can either install PyInquirer with
 
-    pip install pyinquirer
+    pip install PyInquirer
 
 or install using requirements.txt
 
